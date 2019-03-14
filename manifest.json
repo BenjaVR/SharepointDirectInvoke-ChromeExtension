@@ -1,0 +1,14 @@
+{
+    "name": "Sharepoint DirectInvoke",
+    "description": "Opens Sharepoint files directly in the Office client applications",
+    "version": "1.0",
+    "manifest_version": 2,
+    "background": {
+        "scripts": ["background.js"]
+    },
+    "permissions": [
+        "webRequest",
+        "<all_urls>",
+        "webRequestBlocking"
+    ]
+}
