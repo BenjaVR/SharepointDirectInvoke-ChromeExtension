@@ -8,7 +8,8 @@
     },
     "permissions": [
         "webRequest",
-        "<all_urls>",
-        "webRequestBlocking"
+        "webRequestBlocking",
+        "tabs",
+        "*://*.sharepoint.com/*"
     ]
 }

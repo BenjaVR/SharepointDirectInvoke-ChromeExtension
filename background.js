@@ -13,9 +13,14 @@ var protocols = {
     },
 }
 
+var sharepointUrlPattern = "*://*.sharepoint.com/*";
+
+chrome.webRequest.onBeforeRedirect.addListener(closeRedirectedTab, { urls: [sharepointUrlPattern] });
+
 Object.keys(protocols).forEach((protocolKey) => {
     chrome.webRequest.onBeforeRequest.addListener(
         function (details) {
+            console.log('onBeforeRequest', details);
             if (confirm("Open in client app?")) {
                 return {
                     redirectUrl: protocols[protocolKey].prefix + details.url
@@ -23,9 +28,36 @@ Object.keys(protocols).forEach((protocolKey) => {
             }
         }, {
             urls: protocols[protocolKey].extensions
-                .map((ext) => `*://*.sharepoint.com/*.${ext}`),
+                .map((ext) => `${sharepointUrlPattern}.${ext}`),
             types: ["main_frame"]
         },
         ["blocking"]
     );
 });
+
+async function closeRedirectedTab(details) {
+    console.log("closeRedirectedTab", details);
+
+    var tabExists = await doesTabExists(details.tabId);
+    var isOpenedInOfficeClientApp = isOfficeClientUrl(details.redirectUrl);
+    if (tabExists && isOpenedInOfficeClientApp) {
+        chrome.tabs.remove(details.tabId);
+    }
+}
+
+function isOfficeClientUrl(url) {
+    return Object.keys(protocols).some(function (protocolKey) {
+        return url.startsWith(protocols[protocolKey].prefix);
+    });
+}
+
+async function doesTabExists(tabId) {
+    return new Promise(function (resolve, _) {
+        chrome.tabs.get(tabId, function () {
+            if (chrome.runtime.lastError) {
+                return resolve(false);
+            }
+            return resolve(true);
+        });
+    })
+}
