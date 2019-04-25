@@ -3,6 +3,14 @@ import path from "path";
 import CleanWebpackPlugin from "clean-webpack-plugin";
 import CopyPlugin from "copy-webpack-plugin";
 
+class ClearConsolePlugin {
+    public apply(compiler: webpack.Compiler): void {
+        compiler.hooks.watchRun.tap("ClearConsole", () => {
+            console.clear();
+        });
+    }
+}
+
 const config: webpack.Configuration = {
     mode: "development",
     entry: {
@@ -12,10 +20,13 @@ const config: webpack.Configuration = {
         path: path.resolve(__dirname, "dist"),
         filename: "[name].js",
     },
+    resolve: {
+        extensions: [".ts", ".json"],
+    },
     module: {
         rules: [
             {
-                test: /\.ts?$/,
+                test: /\.ts$/,
                 use: "ts-loader",
                 exclude: /node_modules/,
             },
@@ -29,7 +40,13 @@ const config: webpack.Configuration = {
                 to: "manifest.json",
             },
         ]),
+        new ClearConsolePlugin(),
     ],
+    watch: true,
+    watchOptions: {
+        ignored: /node_modules/,
+    },
+    stats: "verbose",
 };
 
 export default config;
