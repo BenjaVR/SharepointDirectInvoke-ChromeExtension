@@ -47,7 +47,6 @@ const config: webpack.Configuration = {
         ),
         new ClearConsolePlugin(),
     ],
-    watch: true,
     watchOptions: {
         ignored: /node_modules/,
     },

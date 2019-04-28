@@ -1,7 +1,7 @@
 {
     "private": true,
     "scripts": {
-        "start": "webpack"
+        "start": "webpack --watch --progress --info-verbosity verbose"
     },
     "devDependencies": {
         "@types/chrome": "0.0.83",
