@@ -17,7 +17,7 @@ const config: webpack.Configuration = {
         background: "./src/background.ts",
     },
     output: {
-        path: path.resolve(__dirname, "dist"),
+        path: path.resolve(__dirname, "build"),
         filename: "[name].js",
     },
     resolve: {
