@@ -26,7 +26,7 @@ const config: webpack.Configuration = {
     module: {
         rules: [
             {
-                test: /\.ts$/,
+                test: /\.ts/,
                 use: "ts-loader",
                 exclude: /node_modules/,
             },
@@ -34,12 +34,17 @@ const config: webpack.Configuration = {
     },
     plugins: [
         new CleanWebpackPlugin(),
-        new CopyPlugin([
+        new CopyPlugin(
+            [
+                {
+                    from: "./src/manifest.json",
+                    to: "manifest.json",
+                },
+            ],
             {
-                from: "./src/manifest.json",
-                to: "manifest.json",
-            },
-        ]),
+                copyUnmodified: true,
+            }
+        ),
         new ClearConsolePlugin(),
     ],
     watch: true,
@@ -47,6 +52,7 @@ const config: webpack.Configuration = {
         ignored: /node_modules/,
     },
     stats: "verbose",
+    devtool: "cheap-module-source-map"
 };
 
 export default config;
