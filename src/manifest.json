@@ -7,9 +7,8 @@
         "scripts": ["background.js"]
     },
     "permissions": [
-        "webRequest",
-        "webRequestBlocking",
         "tabs",
+        "downloads",
         "*://*.sharepoint.com/*"
     ]
 }

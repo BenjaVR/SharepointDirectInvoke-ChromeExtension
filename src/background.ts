@@ -1,30 +1,50 @@
+import { OfficeClientAppService } from "./services/OfficeClientAppService";
 import { BrowserTabService } from "./services/BrowserTabService";
-import { OfficeClientAppService, IOfficeClientAppProtocol } from "./services/OfficeClientAppService";
-import { SHAREPOINT_URL_PATTERN } from "./constants";
 
-function openInClientApp(protocol: IOfficeClientAppProtocol, details: chrome.webRequest.WebRequestBodyDetails) {
-    if (confirm("Open in client app?")) {
-        return {
-            redirectUrl: protocol.prefix + details.url,
-        };
+chrome.downloads.onCreated.addListener((downloadItem: chrome.downloads.DownloadItem) => {
+    if (OfficeClientAppService.isOfficeClientAppMime(downloadItem.mime)) {
+        chrome.downloads.pause(downloadItem.id);
+        if (confirm("Open in client app?")) {
+            chrome.downloads.search({ id: downloadItem.id }, (results: chrome.downloads.DownloadItem[]) => {
+                results.forEach((downloadItemResult: chrome.downloads.DownloadItem) => {
+                    cancelAndRemoveDownload(downloadItemResult);
+                });
+            });
+
+            // Create new tab with the url with Office protocol prepended.
+            chrome.tabs.create(
+                {
+                    url: OfficeClientAppService.prefixUrlWithProtocolBasedOnMime({
+                        url: downloadItem.url,
+                        mime: downloadItem.mime,
+                    }),
+                    selected: false,
+                },
+                (tab: chrome.tabs.Tab) => {
+                    window.setTimeout(async () => {
+                        const doesTabExist = await BrowserTabService.doesTabExist(tab.id);
+                        if (doesTabExist && tab.id !== undefined) {
+                            chrome.tabs.remove(tab.id);
+                        }
+                    }, 100); // Hack to make sure the tab is not closed before the client app can open.
+                }
+            );
+        } else {
+            chrome.downloads.resume(downloadItem.id);
+        }
     }
-}
-OfficeClientAppService.protocols.forEach((protocol) => {
-    chrome.webRequest.onBeforeRequest.addListener(
-        (details) => openInClientApp(protocol, details),
-        {
-            urls: protocol.extensions.map((ext) => `${SHAREPOINT_URL_PATTERN}.${ext}`),
-            types: ["main_frame"],
-        },
-        ["blocking"]
-    );
 });
 
-async function closeRedirectedTab(details: chrome.webRequest.WebRedirectionResponseDetails) {
-    var tabExists = await BrowserTabService.doesTabExist(details.tabId);
-    var isOpenedInOfficeClientApp = OfficeClientAppService.isOfficeClientAppProtocolUrl(details.redirectUrl);
-    if (tabExists && isOpenedInOfficeClientApp) {
-        chrome.tabs.remove(details.tabId);
+function cancelAndRemoveDownload(downloadItem: chrome.downloads.DownloadItem): void {
+    const isFileDeletable = !downloadItem.canResume && downloadItem.exists;
+    if (downloadItem.canResume) {
+        chrome.downloads.cancel(downloadItem.id, () => {
+            if (isFileDeletable) {
+                chrome.downloads.removeFile(downloadItem.id);
+            }
+        });
+    } else if (isFileDeletable) {
+        chrome.downloads.removeFile(downloadItem.id);
     }
+    chrome.downloads.erase({ id: downloadItem.id }, () => {});
 }
-chrome.webRequest.onBeforeRedirect.addListener(closeRedirectedTab, { urls: [SHAREPOINT_URL_PATTERN] });
