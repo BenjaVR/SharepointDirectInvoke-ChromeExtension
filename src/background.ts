@@ -1,34 +1,19 @@
-var protocols: { [key: string]: { prefix: string; extensions: string[] } } = {
-    word: {
-        prefix: "ms-word:ofe|u|",
-        extensions: ["doc", "docx", "docm"],
-    },
-    powerpoint: {
-        prefix: "ms-powerpoint:ofe|u|",
-        extensions: ["ppt", "pptx", "pptm", "pps", "ppsx", "ppsm"],
-    },
-    excel: {
-        prefix: "ms-excel:ofe|u|",
-        extensions: ["xls", "xlsx", "xlsm", "csv"],
-    },
-};
+import { BrowserTabService } from "./services/BrowserTabService";
+import { OfficeClientAppService, IOfficeClientAppProtocol } from "./services/OfficeClientAppService";
+import { SHAREPOINT_URL_PATTERN } from "./constants";
 
-var sharepointUrlPattern = "*://*.sharepoint.com/*";
-
-chrome.webRequest.onBeforeRedirect.addListener(closeRedirectedTab, { urls: [sharepointUrlPattern] });
-
-Object.keys(protocols).forEach((protocolKey) => {
+function openInClientApp(protocol: IOfficeClientAppProtocol, details: chrome.webRequest.WebRequestBodyDetails) {
+    if (confirm("Open in client app?")) {
+        return {
+            redirectUrl: protocol.prefix + details.url,
+        };
+    }
+}
+OfficeClientAppService.protocols.forEach((protocol) => {
     chrome.webRequest.onBeforeRequest.addListener(
-        function(details) {
-            console.log("onBeforeRequest", details);
-            if (confirm("Open in client app?")) {
-                return {
-                    redirectUrl: protocols[protocolKey].prefix + details.url,
-                };
-            }
-        },
+        (details) => openInClientApp(protocol, details),
         {
-            urls: protocols[protocolKey].extensions.map((ext) => `${sharepointUrlPattern}.${ext}`),
+            urls: protocol.extensions.map((ext) => `${SHAREPOINT_URL_PATTERN}.${ext}`),
             types: ["main_frame"],
         },
         ["blocking"]
@@ -36,28 +21,10 @@ Object.keys(protocols).forEach((protocolKey) => {
 });
 
 async function closeRedirectedTab(details: chrome.webRequest.WebRedirectionResponseDetails) {
-    console.log("closeRedirectedTab", details);
-
-    var tabExists = await doesTabExists(details.tabId);
-    var isOpenedInOfficeClientApp = isOfficeClientUrl(details.redirectUrl);
+    var tabExists = await BrowserTabService.doesTabExist(details.tabId);
+    var isOpenedInOfficeClientApp = OfficeClientAppService.isOfficeClientAppProtocolUrl(details.redirectUrl);
     if (tabExists && isOpenedInOfficeClientApp) {
         chrome.tabs.remove(details.tabId);
     }
 }
-
-function isOfficeClientUrl(url: string) {
-    return Object.keys(protocols).some(function(protocolKey) {
-        return url.startsWith(protocols[protocolKey].prefix);
-    });
-}
-
-async function doesTabExists(tabId: number) {
-    return new Promise(function(resolve, _) {
-        chrome.tabs.get(tabId, function() {
-            if (chrome.runtime.lastError) {
-                return resolve(false);
-            }
-            return resolve(true);
-        });
-    });
-}
+chrome.webRequest.onBeforeRedirect.addListener(closeRedirectedTab, { urls: [SHAREPOINT_URL_PATTERN] });
